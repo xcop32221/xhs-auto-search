@@ -40,11 +40,13 @@ except ImportError:
             print(f"标题: {title}")
             print(f"内容: {content}")
             print("==========\n")
+
+        @staticmethod
         def systemNotify(title, content):
-            print(f"\n=== 通知 ===")
+            print(f"\n=== 系统通知 ===")
             print(f"标题: {title}")
             print(f"内容: {content}")
-            print("==========\n")
+            print("===============\n")
     QLAPI = MockQLAPI()
 
 # 配置 - 从环境变量读取
