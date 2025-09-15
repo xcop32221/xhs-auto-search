@@ -15,8 +15,18 @@ import sys
 import json
 import time
 import hashlib
-import requests
 from datetime import datetime
+
+# 添加当前目录到Python路径
+current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(current_dir)
+
+try:
+    from main import Data_Spider
+    from xhs_utils.common_util import init
+except ImportError as e:
+    print(f"导入模块失败: {e}")
+    sys.exit(1)
 
 # 青龙面板QLAPI
 try:
@@ -38,20 +48,16 @@ SEARCH_COUNT = int(os.getenv('XHS_COUNT', '5'))
 XHS_COOKIE = os.getenv('XHS_COOKIE', os.getenv('COOKIES', ''))  # 兼容COOKIES变量名
 
 # 数据存储路径
-SEEN_NOTES_FILE = "/ql/data/scripts/xhs_seen_notes.json"
+SEEN_NOTES_FILE = os.getenv('XHS_SEEN_FILE', '/ql/data/scripts/xhs_seen_notes.json')
+
+# 如果在非青龙环境中，使用当前目录
+if not os.path.exists(os.path.dirname(SEEN_NOTES_FILE)):
+    SEEN_NOTES_FILE = os.path.join(current_dir, 'xhs_seen_notes.json')
 
 class XHSMonitor:
     def __init__(self):
         self.seen_notes = self.load_seen_notes()
-        self.session = requests.Session()
-        self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'application/json, text/plain, */*',
-            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-            'Cookie': XHS_COOKIE,
-            'Referer': 'https://www.xiaohongshu.com/',
-            'Origin': 'https://www.xiaohongshu.com'
-        })
+        self.data_spider = Data_Spider()
 
     def load_seen_notes(self):
         """加载已看过的笔记ID"""
@@ -98,88 +104,35 @@ class XHSMonitor:
         note_id = self.generate_note_id(note_data)
         self.seen_notes.add(note_id)
 
-    def search_notes(self, keyword, count=5):
-        """搜索笔记"""
+    def search_and_get_notes(self, keyword, count=5):
+        """搜索并获取笔记详情"""
         try:
-            url = "https://edith.xiaohongshu.com/api/sns/web/v1/search/notes"
-            data = {
-                "keyword": keyword,
-                "page": 1,
-                "page_size": count,
-                "search_id": "",
-                "sort": "general",
-                "note_type": 0,
-                "ext_flags": [],
-                "image_formats": ["jpg", "webp", "avif"]
-            }
+            # 初始化cookie
+            cookies_str, base_path = init()
+            if not cookies_str:
+                return False, "Cookie未配置", []
 
-            response = self.session.post(url, json=data, timeout=30)
+            print(f"开始搜索: {keyword}")
 
-            if response.status_code == 200:
-                result = response.json()
-                if result.get('success') and result.get('data'):
-                    items = result['data'].get('items', [])
-                    notes = [item for item in items if item.get('model_type') == 'note']
-                    return True, f"成功获取{len(notes)}个笔记", notes
-                else:
-                    return False, f"API错误: {result.get('msg', '未知错误')}", []
+            # 使用原有的API搜索
+            note_data_list, success, msg = self.data_spider.spider_some_search_note(
+                query=keyword,
+                require_num=count,
+                cookies_str=cookies_str,
+                base_path=None,
+                save_choice='none'
+            )
+
+            if success:
+                print(f"搜索成功，获取到 {len(note_data_list)} 个笔记")
+                return True, f"成功获取{len(note_data_list)}个笔记", note_data_list
             else:
-                return False, f"HTTP错误: {response.status_code}", []
+                print(f"搜索失败: {msg}")
+                return False, f"搜索失败: {msg}", []
 
         except Exception as e:
+            print(f"搜索异常: {e}")
             return False, f"搜索异常: {str(e)}", []
-
-    def get_note_detail(self, note_id, xsec_token):
-        """获取笔记详情"""
-        try:
-            url = "https://edith.xiaohongshu.com/api/sns/web/v1/feed"
-            data = {
-                "source_note_id": note_id,
-                "image_formats": ["jpg", "webp", "avif"],
-                "extra": {"need_body_topic": "1"},
-                "xsec_source": "pc_search",
-                "xsec_token": xsec_token
-            }
-
-            response = self.session.post(url, json=data, timeout=30)
-
-            if response.status_code == 200:
-                result = response.json()
-                if result.get('success') and result.get('data'):
-                    items = result['data'].get('items', [])
-                    if items:
-                        return True, "成功", self.parse_note_info(items[0])
-                return False, "数据为空", {}
-            else:
-                return False, f"HTTP错误: {response.status_code}", {}
-
-        except Exception as e:
-            return False, f"获取详情异常: {str(e)}", {}
-
-    def parse_note_info(self, note_info):
-        """解析笔记信息"""
-        try:
-            note_card = note_info.get('note_card', {})
-            interact_info = note_card.get('interact_info', {})
-            user = note_card.get('user', {})
-
-            return {
-                'id': note_info.get('id', ''),
-                'title': note_card.get('display_title', '无标题'),
-                'content': note_card.get('desc', ''),
-                'author': user.get('nickname', '未知'),
-                'likes': interact_info.get('liked_count', '0'),
-                'comments': interact_info.get('comment_count', '0'),
-                'views': interact_info.get('view_count', '0'),
-                'publish_time': note_card.get('time', ''),
-                'tags': [tag.get('name', '') for tag in note_card.get('tag_list', [])],
-                'images': len(note_card.get('image_list', [])),
-                'video': bool(note_card.get('video', {}).get('consumer', {}).get('origin_video_key', '')),
-                'url': f"https://www.xiaohongshu.com/explore/{note_info.get('id', '')}"
-            }
-        except Exception as e:
-            print(f"解析笔记信息错误: {e}")
-            return {}
 
     def format_note_message(self, note_data):
         """格式化笔记通知消息"""
@@ -211,48 +164,36 @@ class XHSMonitor:
         try:
             print(f"开始监控: {SEARCH_KEYWORD}")
 
-            if not XHS_COOKIE:
-                error = "Cookie未配置，请设置XHS_COOKIE环境变量"
-                print(error)
-                QLAPI.notify("❌ 配置错误", error)
-                return False
-
-            # 搜索笔记
-            success, msg, notes = self.search_notes(SEARCH_KEYWORD, SEARCH_COUNT)
+            # 搜索并获取笔记详情
+            success, msg, note_data_list = self.search_and_get_notes(SEARCH_KEYWORD, SEARCH_COUNT)
 
             if not success:
                 print(f"搜索失败: {msg}")
                 QLAPI.notify("❌ 搜索失败", f"{SEARCH_KEYWORD}\n{msg}")
                 return False
 
-            if not notes:
+            if not note_data_list:
                 print("未找到笔记")
+                QLAPI.notify("ℹ️ 监控结果", f"{SEARCH_KEYWORD}\n未找到相关笔记")
                 return True
 
-            print(f"获取到 {len(notes)} 个笔记")
+            print(f"获取到 {len(note_data_list)} 个笔记")
 
-            # 获取详情并过滤新笔记
+            # 过滤新笔记
             new_notes = []
-            for note in notes:
-                note_id = note.get('id', '')
-                xsec_token = note.get('xsec_token', '')
-
-                if note_id and xsec_token:
-                    success, msg, note_detail = self.get_note_detail(note_id, xsec_token)
-                    if success and note_detail:
-                        if not self.is_note_seen(note_detail):
-                            new_notes.append(note_detail)
-                            self.mark_note_as_seen(note_detail)
-                        else:
-                            print(f"已看过: {note_detail.get('title', '')[:20]}")
-                    time.sleep(2)  # 避免请求过频
+            for note_data in note_data_list:
+                if not self.is_note_seen(note_data):
+                    new_notes.append(note_data)
+                    self.mark_note_as_seen(note_data)
+                else:
+                    print(f"已看过: {note_data.get('title', '')[:20]}")
 
             # 保存记录
             self.save_seen_notes()
 
-            # 发送通知
+            # 发送汇总通知
             summary = f"""📊 监控汇总 - {SEARCH_KEYWORD}
-📝 获取: {len(notes)} 个
+📝 获取: {len(note_data_list)} 个
 🆕 新增: {len(new_notes)} 个
 ⏰ {datetime.now().strftime('%H:%M:%S')}
 📊 历史: {len(self.seen_notes)} 个"""
