@@ -169,12 +169,12 @@ class XHSMonitor:
 
             if not success:
                 print(f"搜索失败: {msg}")
-                QLAPI.notify("❌ 搜索失败", f"{SEARCH_KEYWORD}\n{msg}")
+                QLAPI.systemNotify("❌ 搜索失败", f"{SEARCH_KEYWORD}\n{msg}")
                 return False
 
             if not note_data_list:
                 print("未找到笔记")
-                QLAPI.notify("ℹ️ 监控结果", f"{SEARCH_KEYWORD}\n未找到相关笔记")
+                QLAPI.systemNotify("ℹ️ 监控结果", f"{SEARCH_KEYWORD}\n未找到相关笔记")
                 return True
 
             print(f"获取到 {len(note_data_list)} 个笔记")
@@ -198,12 +198,12 @@ class XHSMonitor:
 ⏰ {datetime.now().strftime('%H:%M:%S')}
 📊 历史: {len(self.seen_notes)} 个"""
 
-            QLAPI.notify("📊 小红书监控", summary)
+            QLAPI.systemNotify("📊 小红书监控", summary)
 
             # 发送新笔记通知
             for i, note_data in enumerate(new_notes, 1):
                 title, content = self.format_note_message(note_data)
-                QLAPI.notify(title, content)
+                QLAPI.systemNotify(title, content)
                 print(f"已通知第 {i} 个新笔记")
                 if i < len(new_notes):
                     time.sleep(3)
@@ -214,7 +214,7 @@ class XHSMonitor:
         except Exception as e:
             error = f"执行错误: {str(e)}"
             print(error)
-            QLAPI.notify("💥 监控异常", error)
+            QLAPI.systemNotify("💥 监控异常", error)
             return False
 
 def main():
