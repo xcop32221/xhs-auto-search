@@ -122,6 +122,49 @@ class XHSMonitor:
         note_id = self.generate_note_id(note_data)
         self.seen_notes.add(note_id)
 
+    def create_payload(content):
+        system_prompt = """你是小红书内容分析专家，专为化妆师筛选潜在客户。你的任务是判断这个笔记是否是普通用户发布的、有化妆服务或化妆教学需求的帖子。
+### 用户需求笔记特征 (回答 YES)
+只要满足以下任一类别，都属于潜在客户：
+1.  **服务需求**: 明确表示需要**找人化妆**。
+    *   例如: "求推荐化妆师"、"成都约妆"、"新娘跟妆多少钱"、"找个化妆师拍写真"。
+2.  **教学需求**: 明确表示想要**学习如何自己化妆**。
+    *   例如: "求一个日常妆教程"、"新手怎么画眼线啊"、"这个妆有没有姐妹教我一下"。
+
+### 非客户笔记特征 (回答 NO)
+1.  **化妆师/商家广告**: 任何形式的自我推广、作品展示、服务介绍、价格表、留联系方式、招募学员等。
+    *   例如: "今日新娘作品"、"承接各类妆容"、"化妆教学一对一"。
+2.  **合作需求**: 模特或摄影师寻找互免（无偿）合作。
+    *   例如: "寻找妆造师合作"、"可互免"。
+3.  **无明确需求**: 仅分享自己的妆容或产品，没有求助意图。
+
+### 分析要点
+- 核心是判断笔记发布者是在**寻求帮助（无论是服务还是学习）**，还是在**提供服务（广告或合作）**。
+- 作者昵称或简介中包含“化妆师”、“MUA”、“工作室”等关键词的，大概率是广告（回答NO）。
+
+---
+**你的回答必须简洁，只输出以下两种结果之一：**
+- **YES** (是潜在客户，无论是服务还是教学需求)
+- **NO** (非潜在客户)"""
+        return {
+            "model": "deepseek-reasoner",
+            "messages": [
+                {
+                    "role": "system",
+                    "content": system_prompt
+                },
+                {
+                    "role": "user",
+                    "content": content
+                }
+            ],
+            "temperature": 0.1,  # 使用较低的温度让输出更稳定、更具确定性
+            "max_tokens": 10     # 对于YES/NO的回答，10个token足够了
+        }
+
+
+
+
     def analyze_note_intent(self, note_data):
         """使用DeepSeek分析笔记意图"""
         if not DEEPSEEK_API_KEY:
@@ -142,40 +185,7 @@ class XHSMonitor:
                 'Content-Type': 'application/json'
             }
 
-            data = {
-                "model": "deepseek-chat",
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": """你是小红书内容分析专家。请判断这个笔记是否是普通用户发布的有化妆需求的内容。
-
-用户需求笔记特征（回答YES）：
-1. 求助类：求推荐、求攻略、问哪里好、咨询价格
-2. 分享类：作为顾客分享体验、晒化妆效果、记录过程
-3. 疑问类：询问化妆相关问题、对比选择、求建议
-4. 语气：使用"姐妹们"、"宝子们"、"求推荐"、"有没有"、"怎么样"
-
-化妆师广告特征（回答NO）：
-1. 服务宣传：接单、约妆、可预约、联系我、价格透明
-2. 技术展示：专业化妆师、工作室、作品展示、客户案例
-3. 营销语言：速约、一对一、上门服务、档期、排期
-4. 昵称特征：包含"化妆师"、"美妆"、"工作室"等
-
-分析要点：
-- 重点看内容语气和表达方式
-- 普通用户多用疑问句和求助语气
-- 化妆师多用肯定句和推销语言
-
-只回答：YES（用户需求）或 NO（化妆师广告）"""
-                    },
-                    {
-                        "role": "user",
-                        "content": content
-                    }
-                ],
-                "temperature": 0.1,
-                "max_tokens": 10
-            }
+            data = self.create_payload(content)
 
             response = requests.post(
                 'https://api.deepseek.com/v1/chat/completions',
@@ -206,9 +216,19 @@ class XHSMonitor:
 
         try:
             # 初始化cookie
-            cookies_str, base_path = init()
+            try:
+                cookies_str, base_path = init()
+            except Exception as e:
+                error_msg = f"Cookie初始化失败: {str(e)}"
+                print(error_msg)
+                QLAPI.systemNotify({"title": "🔑 Cookie错误", "content": error_msg})
+                return False, error_msg, []
+
             if not cookies_str:
-                return False, "Cookie未配置", []
+                error_msg = "Cookie未配置或为空，请检查环境变量XHS_COOKIE"
+                print(error_msg)
+                QLAPI.systemNotify({"title": "🔑 Cookie未配置", "content": error_msg})
+                return False, error_msg, []
 
             # 每个关键词搜索的数量
             per_keyword_count = max(1, count // len(keywords))
@@ -252,7 +272,15 @@ class XHSMonitor:
                     all_success_keywords.append(keyword)
                     time.sleep(2)  # 关键词间隔
                 else:
-                    print(f"关键词 '{keyword}' 搜索失败: {msg}")
+                    error_msg = f"关键词 '{keyword}' 搜索失败: {msg}"
+                    print(error_msg)
+
+                    # 检查是否是登录相关错误
+                    if any(err_keyword in msg.lower() for err_keyword in ['登录', 'login', 'cookie', '401', '403', 'unauthorized', 'forbidden']):
+                        QLAPI.systemNotify({
+                            "title": "🚫 登录失败",
+                            "content": f"小红书登录验证失败\n关键词: {keyword}\n错误: {msg}\n请检查Cookie是否过期"
+                        })
 
             # 去重（基于note_id）
             seen_note_ids = set()
@@ -318,7 +346,15 @@ class XHSMonitor:
 
             if not success:
                 print(f"搜索失败: {msg}")
-                QLAPI.systemNotify({"title": "❌ 搜索失败", "content": f"{', '.join(SEARCH_KEYWORDS)}\n{msg}"})
+
+                # 检查是否是登录相关错误
+                if any(err_keyword in msg.lower() for err_keyword in ['登录', 'login', 'cookie', '401', '403', 'unauthorized', 'forbidden', 'cookie未配置', 'cookie错误']):
+                    QLAPI.systemNotify({
+                        "title": "🔑 登录验证失败",
+                        "content": f"小红书账号验证失败\n\n错误详情:\n{msg}\n\n解决方案:\n1. 检查Cookie是否过期\n2. 重新获取XHS_COOKIE\n3. 确认账号状态正常"
+                    })
+                else:
+                    QLAPI.systemNotify({"title": "❌ 搜索失败", "content": f"{', '.join(SEARCH_KEYWORDS)}\n{msg}"})
                 return False
 
             if not note_data_list:
@@ -402,7 +438,16 @@ class XHSMonitor:
         except Exception as e:
             error = f"执行错误: {str(e)}"
             print(error)
-            QLAPI.systemNotify({"title": "💥 监控异常", "content": error})
+
+            # 检查是否是登录相关异常
+            error_str = str(e).lower()
+            if any(err_keyword in error_str for err_keyword in ['登录', 'login', 'cookie', '401', '403', 'unauthorized', 'forbidden']):
+                QLAPI.systemNotify({
+                    "title": "🔑 登录异常",
+                    "content": f"小红书登录验证异常\n\n异常详情:\n{error}\n\n可能原因:\n1. Cookie已过期\n2. 账号被限制\n3. 网络连接问题\n4. API接口变更"
+                })
+            else:
+                QLAPI.systemNotify({"title": "💥 监控异常", "content": error})
             return False
 
 def main():
