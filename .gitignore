@@ -3,6 +3,7 @@ node_modules/
 *.so
 .Python
 build/
+datas/
 develop-eggs/
 dist/
 downloads/
@@ -12,6 +13,7 @@ lib/
 lib64/
 parts/
 sdist/
+.env
 var/
 wheels/
 MANIFEST
@@ -29,3 +31,4 @@ ENV/
 env.bak/
 venv.bak/
 
+.env
