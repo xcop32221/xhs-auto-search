@@ -20,7 +20,6 @@ class Data_Spider():
         note_info = None
         try:
             success, msg, note_info = self.xhs_apis.get_note_info(note_url, cookies_str, proxies)
-            print(json.dumps(note_info, ensure_ascii=False))
             if success:
                 note_info = note_info['data']['items'][0]
                 note_info['url'] = note_url

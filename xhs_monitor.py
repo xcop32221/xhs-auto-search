@@ -6,7 +6,7 @@
 搜索"成都约妆"关键词，通过QLAPI发送通知，避免重复通知
 每10分钟执行一次
 
-cron: */10 * * * *
+cron: 0 0,6-23 * * *
 new Env('小红书成都约妆监控');
 """
 
@@ -54,12 +54,12 @@ except ImportError:
 # 配置 - 从环境变量读取
 # 优化关键词：更偏向用户需求的表达方式
 SEARCH_KEYWORDS = os.getenv('XHS_KEYWORDS', '成都化妆推荐,成都哪里化妆,成都化妆哪家好,成都美妆推荐,成都化妆店推荐,成都化妆攻略').split(',')
-SEARCH_COUNT = int(os.getenv('XHS_COUNT', '15'))  # 增加搜索数量
+SEARCH_COUNT = int(os.getenv('XHS_COUNT', '50'))  # 增加搜索数量
 
 # 备用关键词：当主要关键词效果不好时使用
 BACKUP_KEYWORDS = ['成都美妆', '成都化妆', '成都妆容', '成都美容', '成都彩妆', '成都造型']
 XHS_COOKIE = os.getenv('XHS_COOKIE', os.getenv('COOKIES', ''))  # 兼容COOKIES变量名
-DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY', 'sk-b9f4f87baa104cfb855bdf011e4c5dd7')  # DeepSeek API密钥
+DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY', '')  # DeepSeek API密钥
 
 # 兼容旧版本单个关键词配置 - 只在没有设置新配置时使用
 if os.getenv('XHS_KEYWORD') and not os.getenv('XHS_KEYWORDS'):
