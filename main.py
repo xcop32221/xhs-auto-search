@@ -20,10 +20,12 @@ class Data_Spider():
         note_info = None
         try:
             success, msg, note_info = self.xhs_apis.get_note_info(note_url, cookies_str, proxies)
+            print(json.dumps(note_info, ensure_ascii=False))
             if success:
                 note_info = note_info['data']['items'][0]
                 note_info['url'] = note_url
                 note_info = handle_note_info(note_info)
+
         except Exception as e:
             success = False
             msg = e
@@ -50,6 +52,7 @@ class Data_Spider():
         note_list = []
         for note_url in notes:
             success, msg, note_info = self.spider_note(note_url, cookies_str, proxies)
+
             if note_info is not None and success:
                 note_list.append(note_info)
 
