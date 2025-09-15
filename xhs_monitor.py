@@ -18,6 +18,10 @@ import hashlib
 import requests
 import random
 from datetime import datetime
+from dotenv import load_dotenv
+
+# 加载.env文件
+load_dotenv()
 
 # 添加当前目录到Python路径
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -54,7 +58,7 @@ except ImportError:
 # 配置 - 从环境变量读取
 # 优化关键词：更偏向用户需求的表达方式
 SEARCH_KEYWORDS = os.getenv('XHS_KEYWORDS', '成都化妆推荐,成都哪里化妆,成都化妆哪家好,成都美妆推荐,成都化妆店推荐,成都化妆攻略').split(',')
-SEARCH_COUNT = int(os.getenv('XHS_COUNT', '50'))  # 增加搜索数量
+SEARCH_COUNT = int(os.getenv('XHS_COUNT', '1'))  # 增加搜索数量
 
 # 备用关键词：当主要关键词效果不好时使用
 BACKUP_KEYWORDS = ['成都美妆', '成都化妆', '成都妆容', '成都美容', '成都彩妆', '成都造型']
@@ -112,17 +116,23 @@ class XHSMonitor:
         content = f"{note_data.get('note_id', '')}{note_data.get('title', '')}"
         return hashlib.md5(content.encode()).hexdigest()
 
+
+
     def is_note_seen(self, note_data):
         """检查是否已看过"""
         note_id = self.generate_note_id(note_data)
         return note_id in self.seen_notes
+
+
 
     def mark_note_as_seen(self, note_data):
         """标记为已看过"""
         note_id = self.generate_note_id(note_data)
         self.seen_notes.add(note_id)
 
-    def create_payload(content):
+
+
+    def create_payload(self, content):
         system_prompt = """你是小红书内容分析专家，专为化妆师筛选潜在客户。你的任务是判断这个笔记是否是普通用户发布的、有化妆服务或化妆教学需求的帖子。
 ### 用户需求笔记特征 (回答 YES)
 只要满足以下任一类别，都属于潜在客户：
@@ -140,7 +150,7 @@ class XHSMonitor:
 
 ### 分析要点
 - 核心是判断笔记发布者是在**寻求帮助（无论是服务还是学习）**，还是在**提供服务（广告或合作）**。
-- 作者昵称或简介中包含“化妆师”、“MUA”、“工作室”等关键词的，大概率是广告（回答NO）。
+- 作者昵称或简介中包含"化妆师"、"MUA"、"工作室"等关键词的，大概率是广告（回答NO）。
 
 ---
 **你的回答必须简洁，只输出以下两种结果之一：**
@@ -458,3 +468,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
