@@ -223,6 +223,7 @@ class XHSMonitor:
         """搜索并获取笔记详情 - 支持多关键词"""
         all_notes = []
         all_success_keywords = []
+        failed_keywords = []
 
         try:
             # 初始化cookie
@@ -259,38 +260,44 @@ class XHSMonitor:
 
                 print(f"搜索参数: 排序={sort_type}, 时间={note_time}")
 
-                note_data_list, success, msg = self.data_spider.spider_some_search_note(
-                    query=keyword,
-                    require_num=per_keyword_count,
-                    cookies_str=cookies_str,
-                    base_path=None,
-                    save_choice='none',
-                    sort_type_choice=sort_type,  # 随机排序
-                    note_type=2,                 # 普通笔记
-                    note_time=note_time,         # 随机时间范围
-                    note_range=2,                # 不限
-                    pos_distance=2,              # 附近
-                    geo={                        # 成都地区
-                        "latitude": 30.539416,
-                        "longitude": 104.070491
-                    }
-                )
+                try:
+                    note_data_list, success, msg = self.data_spider.spider_some_search_note(
+                        query=keyword,
+                        require_num=per_keyword_count,
+                        cookies_str=cookies_str,
+                        base_path=None,
+                        save_choice='none',
+                        sort_type_choice=sort_type,  # 随机排序
+                        note_type=2,                 # 普通笔记
+                        note_time=note_time,         # 随机时间范围
+                        note_range=2,                # 不限
+                        pos_distance=2,              # 附近
+                        geo={                        # 成都地区
+                            "latitude": 30.539416,
+                            "longitude": 104.070491
+                        }
+                    )
 
-                if success and note_data_list:
-                    print(f"关键词 '{keyword}' 搜索成功，获取到 {len(note_data_list)} 个笔记")
-                    all_notes.extend(note_data_list)
-                    all_success_keywords.append(keyword)
-                    time.sleep(2)  # 关键词间隔
-                else:
-                    error_msg = f"关键词 '{keyword}' 搜索失败: {msg}"
+                    if success and note_data_list:
+                        print(f"关键词 '{keyword}' 搜索成功，获取到 {len(note_data_list)} 个笔记")
+                        all_notes.extend(note_data_list)
+                        all_success_keywords.append(keyword)
+                        time.sleep(2)  # 关键词间隔
+                    else:
+                        error_msg = f"关键词 '{keyword}' 搜索失败: {msg}"
+                        print(error_msg)
+                        failed_keywords.append(f"{keyword}({msg})")
+
+                        # 检查是否是严重的登录相关错误
+                        if any(err_keyword in msg.lower() for err_keyword in ['登录', 'login', 'cookie', '401', '403', 'unauthorized', 'forbidden']):
+                            print(f"检测到登录相关错误，但继续尝试其他关键词")
+                            # 不立即返回，继续尝试其他关键词
+
+                except Exception as keyword_error:
+                    error_msg = f"关键词 '{keyword}' 搜索异常: {str(keyword_error)}"
                     print(error_msg)
-
-                    # 检查是否是登录相关错误
-                    if any(err_keyword in msg.lower() for err_keyword in ['登录', 'login', 'cookie', '401', '403', 'unauthorized', 'forbidden']):
-                        QLAPI.systemNotify({
-                            "title": "🚫 登录失败",
-                            "content": f"小红书登录验证失败\n关键词: {keyword}\n错误: {msg}\n请检查Cookie是否过期"
-                        })
+                    failed_keywords.append(f"{keyword}(异常: {str(keyword_error)})")
+                    continue  # 继续处理下一个关键词
 
             # 去重（基于note_id）
             seen_note_ids = set()
@@ -301,12 +308,25 @@ class XHSMonitor:
                     seen_note_ids.add(note_id)
                     unique_notes.append(note)
 
+            # 构建结果消息
+            result_parts = []
+            if all_success_keywords:
+                result_parts.append(f"成功关键词: {', '.join(all_success_keywords)}")
+            if failed_keywords:
+                result_parts.append(f"失败关键词: {', '.join(failed_keywords)}")
+
+            result_msg = "; ".join(result_parts) if result_parts else "无有效关键词"
+
             if unique_notes:
                 print(f"多关键词搜索完成，去重后获取到 {len(unique_notes)} 个笔记")
-                success_msg = f"成功关键词: {', '.join(all_success_keywords)}, 获取{len(unique_notes)}个笔记"
+                success_msg = f"{result_msg}, 获取{len(unique_notes)}个笔记"
                 return True, success_msg, unique_notes
+            elif all_success_keywords:
+                # 有成功的关键词但没有获取到笔记
+                return True, f"{result_msg}, 但未获取到笔记", []
             else:
-                return False, "所有关键词都未找到相关笔记", []
+                # 所有关键词都失败了
+                return False, f"所有关键词都搜索失败: {result_msg}", []
 
         except Exception as e:
             print(f"搜索异常: {e}")
