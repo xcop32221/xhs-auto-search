@@ -57,11 +57,11 @@ except ImportError:
 
 # 配置 - 从环境变量读取
 # 优化关键词：更偏向用户需求的表达方式
-SEARCH_KEYWORDS = os.getenv('XHS_KEYWORDS', '成都化妆推荐,成都哪里化妆,成都化妆哪家好,成都美妆推荐,成都化妆店推荐,成都化妆攻略').split(',')
+SEARCH_KEYWORDS = os.getenv('XHS_KEYWORDS', '约妆,成都约妆,找妆娘,新娘跟妆,新娘跟妆多少钱,找个化妆师拍写真,上门化妆,成都上门化妆').split(',')
 SEARCH_COUNT = int(os.getenv('XHS_COUNT', '1'))  # 增加搜索数量
 
 # 备用关键词：当主要关键词效果不好时使用
-BACKUP_KEYWORDS = ['成都美妆', '成都化妆', '成都妆容', '成都美容', '成都彩妆', '成都造型']
+BACKUP_KEYWORDS = ["求推荐化妆师", "求一个日常妆教程", "新手怎么画眼线啊", "这个妆有没有姐妹教我一下"]
 XHS_COOKIE = os.getenv('XHS_COOKIE', os.getenv('COOKIES', ''))  # 兼容COOKIES变量名
 DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY', '')  # DeepSeek API密钥
 
@@ -268,7 +268,7 @@ class XHSMonitor:
                     sort_type_choice=sort_type,  # 随机排序
                     note_type=2,                 # 普通笔记
                     note_time=note_time,         # 随机时间范围
-                    note_range=0,                # 不限
+                    note_range=2,                # 不限
                     pos_distance=2,              # 附近
                     geo={                        # 成都地区
                         "latitude": 30.539416,
