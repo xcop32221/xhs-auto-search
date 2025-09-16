@@ -40,7 +40,7 @@ except ImportError as e:
 SEARCH_KEYWORDS = os.getenv('XHS_BEAUTY_KEYWORDS', '').split(',')
 SEARCH_COUNT = int(os.getenv('XHS_BEAUTY_COUNT', '10'))  # 增加搜索数量
 BACKUP_KEYWORDS = os.getenv('XHS_BEAUTY_BACKUP_KEYWORDS', '').split(',')
-XHS_COOKIE = os.getenv('XHS_BEAUTY_COOKIE', os.getenv('COOKIES', ''))  # 兼容COOKIES变量名
+XHS_COOKIE = os.getenv('XHS_BEAUTY_COOKIE', os.getenv('XHS_BEAUTY_COOKIE', ''))  # 兼容COOKIES变量名
 DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY', '')  # DeepSeek API密钥
 
 # 兼容旧版本单个关键词配置 - 只在没有设置新配置时使用
@@ -207,7 +207,7 @@ class XHSMonitor:
         try:
             # 初始化cookie
             try:
-                cookies_str, base_path = init()
+                cookies_str = init()
             except Exception as e:
                 error_msg = f"Cookie初始化失败: {str(e)}"
                 print(error_msg)
