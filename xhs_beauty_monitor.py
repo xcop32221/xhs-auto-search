@@ -37,11 +37,9 @@ except ImportError as e:
 
 # 配置 - 从环境变量读取
 # 优化关键词：更偏向用户需求的表达方式
-SEARCH_KEYWORDS = os.getenv('XHS_BEAUTY_KEYWORDS', '约妆,成都约妆,找妆娘,找个化妆师拍写真,上门化妆,上门化妆多少钱,成都上门化妆').split(',')
+SEARCH_KEYWORDS = os.getenv('XHS_BEAUTY_KEYWORDS', '').split(',')
 SEARCH_COUNT = int(os.getenv('XHS_BEAUTY_COUNT', '10'))  # 增加搜索数量
-
-# 备用关键词：当主要关键词效果不好时使用
-BACKUP_KEYWORDS = ["求推荐化妆师", "求一个日常妆教程", "这个妆有没有姐妹教我一下"]
+BACKUP_KEYWORDS = os.getenv('XHS_BEAUTY_BACKUP_KEYWORDS', '').split(',')
 XHS_COOKIE = os.getenv('XHS_BEAUTY_COOKIE', os.getenv('COOKIES', ''))  # 兼容COOKIES变量名
 DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY', '')  # DeepSeek API密钥
 
