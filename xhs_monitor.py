@@ -57,8 +57,8 @@ except ImportError:
 
 # 配置 - 从环境变量读取
 # 优化关键词：更偏向用户需求的表达方式
-SEARCH_KEYWORDS = os.getenv('XHS_KEYWORDS', '约妆,成都约妆,找妆娘,新娘跟妆,新娘跟妆多少钱,找个化妆师拍写真,上门化妆,成都上门化妆').split(',')
-SEARCH_COUNT = int(os.getenv('XHS_COUNT', '1'))  # 增加搜索数量
+SEARCH_KEYWORDS = os.getenv('XHS_KEYWORDS', '约妆,成都约妆,找妆娘,找个化妆师拍写真,上门化妆,上门化妆多少钱,成都上门化妆').split(',')
+SEARCH_COUNT = int(os.getenv('XHS_COUNT', '10'))  # 增加搜索数量
 
 # 备用关键词：当主要关键词效果不好时使用
 BACKUP_KEYWORDS = ["求推荐化妆师", "求一个日常妆教程", "新手怎么画眼线啊", "这个妆有没有姐妹教我一下"]
