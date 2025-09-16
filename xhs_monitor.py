@@ -34,35 +34,15 @@ except ImportError as e:
     print(f"导入模块失败: {e}")
     sys.exit(1)
 
-# 青龙面板QLAPI
-try:
-    from ql import QLAPI
-except ImportError:
-    # 如果不在青龙环境中，使用print模拟
-    class MockQLAPI:
-        @staticmethod
-        def notify(data):
-            print(f"\n=== 通知 ===")
-            print(f"标题: {data.get('title', '无标题')}")
-            print(f"内容: {data.get('content', '无内容')}")
-            print("==========\n")
-
-        @staticmethod
-        def systemNotify(data):
-            print(f"\n=== 系统通知 ===")
-            print(f"标题: {data.get('title', '无标题')}")
-            print(f"内容: {data.get('content', '无内容')}")
-            print("===============\n")
-    QLAPI = MockQLAPI()
 
 # 配置 - 从环境变量读取
 # 优化关键词：更偏向用户需求的表达方式
-SEARCH_KEYWORDS = os.getenv('XHS_KEYWORDS', '约妆,成都约妆,找妆娘,找个化妆师拍写真,上门化妆,上门化妆多少钱,成都上门化妆').split(',')
-SEARCH_COUNT = int(os.getenv('XHS_COUNT', '10'))  # 增加搜索数量
+SEARCH_KEYWORDS = os.getenv('XHS_BEAUTY_KEYWORDS', '约妆,成都约妆,找妆娘,找个化妆师拍写真,上门化妆,上门化妆多少钱,成都上门化妆').split(',')
+SEARCH_COUNT = int(os.getenv('XHS_BEAUTY_COUNT', '10'))  # 增加搜索数量
 
 # 备用关键词：当主要关键词效果不好时使用
-BACKUP_KEYWORDS = ["求推荐化妆师", "求一个日常妆教程", "新手怎么画眼线啊", "这个妆有没有姐妹教我一下"]
-XHS_COOKIE = os.getenv('XHS_COOKIE', os.getenv('COOKIES', ''))  # 兼容COOKIES变量名
+BACKUP_KEYWORDS = ["求推荐化妆师", "求一个日常妆教程", "这个妆有没有姐妹教我一下"]
+XHS_COOKIE = os.getenv('XHS_BEAUTY_COOKIE', os.getenv('COOKIES', ''))  # 兼容COOKIES变量名
 DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY', '')  # DeepSeek API密钥
 
 # 兼容旧版本单个关键词配置 - 只在没有设置新配置时使用
@@ -156,6 +136,7 @@ class XHSMonitor:
 **你的回答必须简洁，只输出以下两种结果之一：**
 - **YES** (是潜在客户，无论是服务还是教学需求)
 - **NO** (非潜在客户)"""
+
         return {
             "model": "deepseek-reasoner",
             "messages": [
